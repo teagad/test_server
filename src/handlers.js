@@ -1,76 +1,55 @@
-const path =require('path')
-const Pers=require('./person')
+require('dotenv').config()
+const path =require('path');
+const Pers=require('./person');
+const jwt = require("jsonwebtoken");
 
-
-const loginget = (req,res)=>{
-    if(req.session.err){
-      let err = req.session.err 
-      delete req.session.err
-      res.send(`<h1>${err}</h1>
-      <a href="/">login_again</a>`);
-    }
-    res.sendFile(path.resolve(path.resolve(),'static','index.html'))}
-
-const registerget = (req,res)=>{
-    if(req.session.err){
-      let err = req.session.err 
-      delete req.session.err
-      if(err){
-        res.send(`<h1>${err}</h1>
-        <a href="/register">register_again</a>`);
-      }
-    }
-    res.sendFile(path.resolve(path.resolve(),'static','register.html'))
+const loginpost = async (req, res)=>{
+  const {username, password} = req.body;
+  const user =await Pers.findOne({name: username}) ?? await Pers.findOne({email: username});
+  if (user && user.password == password) {
+    const token = jwt.sign(user.toJSON(), process.env.ACCESS_TOKEN_SECRET);
+    res.json({status : "loged in",token: token});
+  } else {
+    res.json("wrong nickname/email or password");
   }
+};
 
-const loginpost = async (req,res)=>{
-    const {username , password} = req.body;
-    const user =await Pers.findOne({name:username}) ?? await Pers.findOne({email:username})
-    if(user && user.password == password) {
-      req.session.isAuth = true;
-      req.session.ind = user._id;
-      req.session.cookie.expires = new Date(Date.now() + (30*1000))
-      res.redirect('/loged_in');
-    }
-    else {
-      req.session.err = "wrong nickname/email or password"
-      res.redirect("/");
-    
-    }
+const registerpost = async (req, res)=>{
+  const {username, password, email} = req.body;
+  const pers = new Pers({
+    name: username,
+    password: password,
+    email: email,
+  });
+  const user = await Pers.findOne({email: email});
+  if (!user && username && password && email) {
+    const token = jwt.sign(pers.toJSON(), process.env.ACCESS_TOKEN_SECRET);
+    await pers.save();
+    res.json({status : "loged in",token: token});
+  } else {
+    res.json('not all params given');
   }
-const registerpost = async (req,res)=>{
+};
 
-    const {username , password, email} = req.body;
-    const pers = new Pers({
-      name:username,
-      password:password,
-      email:email,
+const logedinget = async (req, res)=>{
+  res.json(req.user);
+};
+
+const isAuth = function(req, res, next) {
+  const token = req.headers?.authorization?.split(" ")[1]
+  if (token){
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET,(err, user)=>{
+      if(err) return res.sendStatus(403);
+      req.user = user;
+      next()
     })
-    const user =await Pers.findOne({email:email})
-    if(!user&&username&&password&&email){
-      req.session.isAuth = true;
-      await pers.save()
-      const user2 =await Pers.findOne({email:email})
-      req.session.ind = user2._id;
-      req.session.cookie.expires = new Date(Date.now() + (30*1000))
-      res.redirect('/')
-    }
-    else {
-      req.session.err = "not all params given"
-      res.redirect('/register')
-    }
-  
   }
-
-const logedinget = async (req,res)=>{
-    const user = await Pers.findById(req.session.ind)
-    res.send(user??"l")
-  }
+  else res.sendStatus(401);
+};
 
 module.exports = {
-    loginpost,
-    loginget,
-    registerpost,
-    registerget,
-    logedinget
-}
+  loginpost,
+  registerpost,
+  logedinget,
+  isAuth
+};
