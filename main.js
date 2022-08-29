@@ -1,10 +1,11 @@
+require('dotenv').config()
 const express = require('express');
 const jwt = require("jsonwebtoken");
 const mongoose=require('mongoose');
-const {loginpost, registerpost, logedinget, isAuth} = require('./src/handlers.js');
+const {loginPost, registerPost, logedinGet, isAuth} = require('./src/handlers.js');
 const app = express();
 const port = 3000;
-const uri ='mongodb+srv://teagad:zx98754Y@cluster0.qvzlvdb.mongodb.net/?retryWrites=true&w=majority';
+const uri =process.env.URI;
 
 // connect MongoDb and starting server
 async function start() {
@@ -23,8 +24,8 @@ start();
 
 app.use(express.json());
 
-app.post('/', loginpost);
+app.post('/', loginPost);
 
-app.post('/register', registerpost);
+app.post('/register', registerPost);
 
-app.get('/loged_in', isAuth, logedinget);
+app.get('/loged_in', isAuth, logedinGet);
